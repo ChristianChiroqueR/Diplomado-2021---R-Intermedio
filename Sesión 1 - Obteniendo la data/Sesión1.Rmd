@@ -1,0 +1,343 @@
+---
+title: "Sesión 1 - Cómo conseguir la data"
+author: "Christian Chiroque"
+date: "5/12/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## OBTENER DATA DESDE GITHUB
+
+Tenemos que utilizar la librería "rio". Para ello, primero tenemos que instalarlo con el comando install.packages("rio").
+
+Luego de eso, lo abrimos
+
+```{r}
+library(rio)
+```
+
+### Ejercicio Github 1 
+
+Visita la [página web construida por la Universidad Jhons Hopkins](https://gisanddata.maps.arcgis.com/apps/opsdashboard/index.html#/bda7594740fd40299423467b48e9ecf6)
+
+Identifica que en la descripción nos indica dónde se ubica la data a la que podemos tener acceso. Le damos click al enlace que dice [GitHub](https://github.com/CSSEGISandData/COVID-19)
+
+Nos va a llevar a su repositorio. 
+
+Elegimos la carpeta *csse_covid_19_data* y luego *csse_covid_19_daily_reports_us*.
+
+Vemos que tenemos todas las bases de datos que suben diariamente. Elijamos la de ayer (10 de septiembre) que se encuentra al último.
+
+Ponemos click a **raw**.
+
+Copiamos la dirección (barra de direcciones):
+
+https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports_us/05-12-2021.csv
+
+Nos vamos al R Studio. Creamos un objeto que sea el link:
+
+```{r}
+link= "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports_us/02-04-2021.csv"
+```
+
+Luego simplemente utilizamos import(), el cual es una función del paquete rio (que ya hemos abierto). Vamos a traer la data y la vamos a llamar **data_jh**:
+
+```{r}
+data_jh = import(link)
+```
+
+Vemos que en nuestro *Environment* ya aparece un objeto que es nuestro data frame. 
+
+Para conocer qué variables contiene usamos names():
+
+```{r}
+names(data_jh)
+```
+
+Para conocer la estructura usamos str():
+```{r}
+str(data_jh)
+```
+
+
+- Deseamos quedarnos con las siguientes variables: Province_State, Confirmed y Deaths. Cómo lo hacemos?
+
+```{r}
+data_jh2= data_jh[,c(1,6,7)]
+```
+
+- Cuál es el máximo y mínimo de confirmados? Y de fallecidos?
+
+```{r}
+summary(data_jh2)
+```
+
+- Si queremos analizar los confirmados qué gráficos podemos utilizar? Para qué nos sirve cada uno?
+
+```{r}
+hist(data_jh2$Confirmed)
+boxplot(data_jh2$Confirmed)
+```
+
+- Convertir las variables de fallecidos y confirmados de unidades a miles de habitantes. 
+
+```{r}
+data_jh2$Confirmed = data_jh2$Confirmed/1000
+boxplot(data_jh2$Confirmed, main="Boxplot de Confirmados de Covid-19 (en miles de habitantes)", col = "blue")
+```
+
+- Qué pasa si no recuerdo bien cuáles son los "argumentos" que tienen las funciones?
+
+?boxplot
+
+
+### Ejercicio Github 2 
+
+Entra el [siguiente enlace](https://github.com/ChristianChiroqueR/banco_de_datos/tree/main/DATA_internacional)
+
+Vamos a extraer el archivo matrícula.xlsx
+
+Entramos al archivo, le damos click derecho al botón de *Download* y seleccionarmos *copiar enlace*.
+
+Luego realizamos el mismo ejercicio:
+
+```{r}
+link2="https://github.com/ChristianChiroqueR/banco_de_datos/raw/main/DATA_internacional/matricula.xlsx"
+matricula = import(link2)
+```
+
+Vemos variables y estructura
+
+```{r}
+names(matricula)
+str(matricula)
+```
+
+
+### Ejercicio Github 3
+
+En el mismo [link](https://github.com/ChristianChiroqueR/banco_de_datos/blob/main/DATA_Peru/COMPETITIVIDAD.sav), seleccionamos la data llamada positivos_covid:
+
+```{r}
+link3="https://github.com/ChristianChiroqueR/banco_de_datos/raw/main/DATA_Peru/COMPETITIVIDAD.sav"
+competitividad = import(link3)
+```
+
+Vemos variables y estructura
+
+```{r}
+names(competitividad)
+str(competitividad)
+```
+
+
+## OBTENER DATA DE UNA PÁGINA WEB CON SCRAP
+
+### Ejercicio 1
+
+Tabla del [Índice de Democracia](https://es.wikipedia.org/wiki/%C3%8Dndice_de_democracia)]
+
+```{r}
+site1="https://es.wikipedia.org/wiki/%C3%8Dndice_de_democracia"
+xpath1='//*[@id="mw-content-text"]/div[1]/table[2]' #Las comillas simples se ingresan con ALT + 39
+```
+
+
+
+
+Aplicamos el comando *htmltab()*
+
+```{r}
+library(htmltab)
+democracy= htmltab(doc =site1,
+               which =xpath1)
+```
+
+Verificamos la data:
+
+```{r}
+head(democracy)
+tail(democracy)
+str(democracy)
+```
+
+- Qué problema podemos observar?
+
+Los nombres, los cambiamos por unos más simples
+
+```{r}
+names(democracy)
+names(democracy)=c("Puesto","Pais","Puntuacion","Proceso_electoral","Funcionamiento_del_gobierno","Participacion_politica", "Cultura_politica", "Derechos_civiles", "Categoria")
+names(democracy)
+```
+
+O también podríamos extraer los "símbolos" problemáticos y cambiarlos por las letras que correspondan
+
+```{r}
+#names(democracy)=gsub("Ã","i",names(democracy))
+#names(democracy)=gsub("i³","o",names(democracy))
+```
+
+Podemos hacer lo mismo si identificamos algunos caracteres problemáticos dentro de la misma data:
+
+```{r}
+table(democracy$Categoria)
+democracy$Categoria= gsub("Ã©","e",democracy$Categoria)
+democracy$Categoria= gsub("Ã","i",democracy$Categoria)
+table(democracy$Categoria)
+```
+
+O en la variable país:
+
+```{r}
+data$Pais=gsub("Ã¡","a",data$Pais)
+data$Pais=gsub("Ã©","e",data$Pais)
+data$Pais=gsub("Ã­","i",data$Pais)
+data$Pais=gsub("Ã³","o",data$Pais)
+data$Pais=gsub("Ãº","u",data$Pais)
+data$Pais=gsub("Ã±","n",data$Pais)
+data$Pais=gsub("Â","",data$Pais)
+```
+
+- Los puntajes están como characteres. Tenemos que volverlos objetos numéricos
+
+Podemos hacerlo variable por variable con:
+
+```{r}
+str(democracy)
+democracy$Puntuacion=as.numeric(democracy$Puntuacion)
+str(democracy)
+```
+
+O lo podemos hacer en grupo con la función lapply
+
+```{r}
+democracy[,c(4:8)]=lapply(democracy[,c(4:8)],as.numeric)
+str(democracy)
+```
+
+
+
+### Ejercicio 2
+
+Tabla del [Índice de IDH  de países](https://es.wikipedia.org/wiki/Anexo:Pa%C3%ADses_por_IDH_ajustado_por_desigualdad)]
+
+```{r}
+site2="https://es.wikipedia.org/wiki/Anexo:Pa%C3%ADses_por_IDH_ajustado_por_desigualdad"
+xpath2='//*[@id="mw-content-text"]/div[1]/div[3]/table/tbody' #Las comillas simples se ingresan con ALT + 39
+```
+
+Aplicamos el comando *htmltab()*
+
+```{r}
+library(htmltab)
+IDH_paises= htmltab(doc =site2,
+               which =xpath2)
+```
+
+Vemos que los problemas de las tildes son un patrón, por lo que podríamos crear una función y repetirla las veces que queramos y así aligeramos el código.
+
+
+```{r}
+limpiar <- function(x) {
+  x <- gsub("Ã¡","a",x)
+  x <- gsub("Ã©","e",x)
+  x <- gsub("Ã­","i",x)
+  x <- gsub("Ã³","o",x)
+  x <- gsub("Ãº","u",x)
+  x <- gsub("Ã±","n",x)
+  x <- gsub("Â","",x)
+  return(x)
+}
+```
+
+Aplicamos la función:
+
+```{r}
+tail(IDH_paises)
+IDH_paises$`PaÃ­s`=limpiar(IDH_paises$`PaÃ­s`)
+
+#también lo podemos aplicar a los nombres de las variables
+names(IDH_paises)=limpiar(names(IDH_paises))
+```
+
+IDENTIFICANDO PATRONES PODEMOS HACER NUESTRO ANÁLISIS MÁS SENCILLO
+
+
+
+### Ejercicio 3
+
+[Índice de Desarrollo Humano] (https://es.wikipedia.org/wiki/Anexo:Departamentos_del_Per%C3%BA_por_IDH)
+
+```{r}
+site3="https://es.wikipedia.org/wiki/Anexo:Departamentos_del_Per%C3%BA_por_IDH"
+xpath3='//*[@id="mw-content-text"]/div[1]/center/table' #Las comillas simples se ingresan con ALT + 39
+IDH= htmltab(doc =site3,
+               which =xpath3)
+IDH=IDH[,c(2,12)]
+names(IDH)=c("Departamento","IDH_2019")
+str(IDH)
+```
+
+Lo volvemos numérico. Qué problema aparece?
+
+```{r}
+#IDH$IDH_2019=as.numeric(IDH$IDH_2019)
+```
+
+```{r}
+IDH$IDH_2019=gsub(",",".",IDH$IDH_2019)
+IDH$IDH_2019=as.numeric(IDH$IDH_2019)
+```
+
+Podemos limpiar algunas celdas rápidamente con la función 
+fix(IDH)
+
+- Cuál es el departamento que ha tenido el cambio más drástrico (sea bien o mal) en los años 1993 y 2019?
+
+
+
+### Ejercicio 4
+
+[PBI] (https://es.wikipedia.org/wiki/Anexo:Regiones_de_Per%C3%BA_por_PIB)
+
+```{r}
+site4="https://es.wikipedia.org/wiki/Anexo:Regiones_de_Per%C3%BA_por_PIB"
+xpath4='//*[@id="mw-content-text"]/div[1]/table[1]' #Las comillas simples se ingresan con ALT + 39
+PBI= htmltab(doc =site4,
+               which =xpath4)
+str(PBI)
+```
+
+```{r}
+PBI=PBI[,c(2,3)]
+names(PBI)=c("Departamento", "PBI_nominal")
+```
+
+Podemos limpiar algunas celdas rápidamente con la función 
+fix(PBI)
+
+
+## Merge de bases de datos
+
+Una vez creadas las bases IDH y PBI, se le solicita que se una ambas en una sola. 
+
+```{r}
+#Merging
+#final=merge(IDH,PBI,by.x='Departamento', by.y='Departamento') 
+#head(final)
+#final$PBI_nominal=gsub(",",".",final$PBI_nominal)
+#str(final)
+#final[,c(6:13)]=lapply(final[,c(6:13)],as.numeric)
+#plot(final$IDH2007,final$PBI_nominal)
+```
+
+
+## Guardar base de datos
+
+
+
+
+
+
