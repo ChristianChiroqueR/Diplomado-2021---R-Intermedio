@@ -1,0 +1,85 @@
+---
+title: "Gapminder"
+author: "Christian Chiroque"
+date: "8/1/2022"
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Librerías
+
+```{r}
+library(gapminder)
+library(rio)
+library(tidyverse)
+library(lubridate)
+library(kableExtra)
+```
+
+
+## Data
+
+```{r}
+gapminder_data<-gapminder
+```
+
+
+## Gráfico 1
+
+```{r}
+gapminder_data |> 
+    filter(country=="Peru") |> 
+    ggplot(aes(y=lifeExp, x=year)) +
+    geom_line() + 
+    labs(x = "Años", 
+         y = "Esperanza de vida (años)", 
+         title = "Evolución de la variable Esperanza de vida",
+         subtitle = "Años 1957 - 2007", 
+         caption = "Fuente:Gapminder Data")
+```
+## Gráfico 2
+
+```{r}
+gapminder_data |> 
+    filter(country=="Peru") |> 
+    ggplot(aes(y=pop, x=year)) +
+    geom_line() + 
+    labs(x = "Años", 
+         y = "Población", 
+         title = "Evolución de la variable Población",
+         subtitle = "Años 1957 - 2007", 
+         caption = "Fuente:Gapminder Data")
+```
+
+## Gráfico 3
+
+```{r}
+gapminder_data |> 
+    filter(country=="Peru") |> 
+    ggplot(aes(y=gdpPercap, x=year)) +
+    geom_col() + 
+    labs(x = "Años", 
+         y = "PBIpc", 
+         title = "Evolución de la variable GDPpercap",
+         subtitle = "Años 1957 - 2007", 
+         caption = "Fuente:Gapminder Data")
+```
+## Tabla
+
+```{r}
+gapminder_data |> 
+    filter(country=="Peru") |>
+    select(year, lifeExp, pop, gdpPercap) |> 
+    kable()
+```
+
+
+```{r}
+gapminder_data |> select(country) |> distinct() |> arrange(country) |> drop_na()
+```
+
