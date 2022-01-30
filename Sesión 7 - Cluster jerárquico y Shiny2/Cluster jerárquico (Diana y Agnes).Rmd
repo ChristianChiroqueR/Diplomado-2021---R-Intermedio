@@ -1,0 +1,255 @@
+---
+title: "Análisis cluster"
+author: "Christian Chiroque"
+date: "21/1/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Librerías
+
+```{r}
+library (rio)
+library(factoextra)
+library(cluster)
+library(ggrepel)
+library(tidyverse)
+```
+
+
+PASO 0.- PREPARAMOS LA DATA
+
+Debemos:
+- Obtener data original
+- Omitir perdidos
+- Colocar nombre a las filas. Esto se realiza para identificar los casos en un gráfico. Si el número de datos es muy grande, no será necesario (las etiquetas se van a superponer y será ininteligible).  
+- Guardar la data editada con otro nombre ("subdata", en este caso)
+
+```{r}
+USArrests
+subdata<-USArrests[1:30,c(1,2,4)]
+```
+
+############################################################################
+
+# EXPLORACIÓN
+
+Vemos alguna agrupación en nuestras tres variables?
+
+```{r}
+subdata |> ggplot(aes(x=Murder, y=Assault)) + geom_point() + geom_text(aes(label=rownames(subdata)))
+```
+
+
+
+
+```{r}
+library(scatterplot3d)
+library(rgl)
+with(subdata,plot3d(subdata[,1:3], type = "s", size=0.5)) +
+with(subdata,text3d(subdata[,1:3], texts=rownames(subdata), pos=4))
+```
+
+Si tuviesemos más variables, cómo veríamos posibles grupos? (PCA)
+
+```{r}
+psych::KMO(subdata)
+pc <- prcomp(x=subdata,scale=TRUE, center=TRUE)
+fviz_pca_ind(pc)
+```
+
+
+############################################################################
+
+# MÉTODOS TRADICIONALES
+
+# MÉTODOS 1: NO JERÁRQUICO (partición por medoides) 
+
+### Paso 1: Cálculo
+
+```{r}
+# 1. Calculan las distancias
+distancias= daisy(subdata, metric="gower") # Con la métrica de gower ya no es necesario la estandarización
+# 2. Identificar el número recomendado de clusters
+fviz_nbclust(subdata, pam,diss=distancias,method = "gap_stat",k.max = 10,verbose = F)
+# 3. Calculamos el cluster
+particion = pam(distancias,2,cluster.only = F) #Indicamos 2 por el resultado anterior
+```
+
+### Paso 2: Validación e identificación de casos mal clasificados
+
+```{r}
+# 4. Gráfico de silueta
+fviz_silhouette(particion, label=TRUE) # Identificar el promedio y el número de casos negativos
+```
+
+```{r}
+particion$silinfo$widths |> data.frame() |> filter(sil_width<0)
+```
+
+### Paso 3: Exploración y Visualización
+
+```{r}
+subdata |> mutate(particion=particion$clustering) |> group_by(particion) |> summarise(
+  Murder = mean(Murder),
+  Assault = mean(Assault), 
+  Rape=mean(Rape))
+```
+
+
+```{r}
+subdata$particion = particion$clustering
+subdata$particion = as.factor(subdata$particion)
+levels(subdata$particion) = c("Alta delincuencia", "Baja delincuencia")
+table(subdata$particion)
+```
+
+```{r}
+fviz_cluster(object = list(data=subdata[,1:3], cluster = subdata$particion),
+             geom = c("text"), 
+             ellipse.type = "convex")
+```
+
+```{r}
+with(subdata,plot3d(subdata[,1:3], type = "s", size=0.8, col=as.numeric(particion)))
+with(subdata,text3d(subdata[,1:3], texts=rownames(subdata), pos=4))
+```
+
+
+############################################################################
+
+## MÉTODO 2: JERÁRQUICO - Aglomerativo
+
+### Paso 1: Cálculo
+
+```{r}
+# 1. Calculan las distancias
+#distancias= daisy(subdata, metric="gower")
+# 2. Identificar el número recomendado de clusters. Aplica tanto para aglomerativo como divisivo
+fviz_nbclust(subdata[,1:3], hcut,diss=distancias,method = "gap_stat",k.max = 10,verbose = F)
+# 3. Calculamos el cluster
+aglomerativo = hcut(distancias, k = 2,hc_func='agnes',hc_method = "ward.D") #Indicamos 2 por el resultado anterior 
+```
+
+### Paso 2: Validación e identificación de casos mal clasificados
+
+```{r}
+# 4. Gráfico de silueta
+fviz_silhouette(aglomerativo, label=TRUE)
+```
+
+```{r}
+aglomerativo$silinfo$widths |> data.frame() |> filter(sil_width<0)
+```
+
+
+### Paso 3: Visualización
+
+```{r}
+fviz_dend(aglomerativo, rect = TRUE, cex = 0.5)
+```
+
+
+```{r}
+subdata |> mutate(aglomerativo=aglomerativo$cluster) |> group_by(aglomerativo) |> summarise(
+  Murder = mean(Murder),
+  Assault = mean(Assault), 
+  Rape=mean(Rape))
+```
+```{r}
+subdata$aglomerativo = aglomerativo$cluster
+subdata$aglomerativo = as.factor(subdata$aglomerativo)
+levels(subdata$aglomerativo) = c("Alta delincuencia", "Baja delincuencia")
+table(subdata$aglomerativo)
+```
+
+```{r}
+fviz_cluster(object = list(data=subdata[,1:3], cluster = subdata$aglomerativo),
+             geom = c("text"), 
+             ellipse.type = "convex")
+```
+
+```{r}
+with(subdata,plot3d(subdata[,1:3], type = "s", size=0.8, col=as.numeric(aglomerativo)))
+with(subdata,text3d(subdata[,1:3], texts=rownames(subdata), pos=4))
+```
+
+
+############################################################################
+
+## MÉTODO 3: JERÁRQUICO - Divisivo
+
+### Paso 1: Cálculo
+
+```{r}
+# 1. Calculan las distancias
+#distancias= daisy(subdata, metric="gower")
+# 2. Identificar el número recomendado de clusters. Aplica tanto para aglomerativo como divisivo
+#fviz_nbclust(subdata, hcut,diss=g.dist,method = "gap_stat",k.max = 10,verbose = F) #Ya lo habíamos calculado
+# 3. Calculamos el cluster
+divisivo = hcut(distancias, k = 2,hc_func='diana') #Indicamos 2 por el resultado anterior 
+```
+
+### Paso 2: Validación e identificación de casos mal clasificados
+
+```{r}
+# 4. Gráfico de silueta
+fviz_silhouette(divisivo, label=TRUE)
+```
+
+```{r}
+divisivo$silinfo$widths |> data.frame() |> filter(sil_width<0)
+```
+
+
+### Paso 3: Visualización
+
+```{r}
+fviz_dend(divisivo, rect = TRUE, cex = 0.5)
+```
+
+
+```{r}
+subdata |> mutate(divisivo=divisivo$cluster) |> group_by(divisivo) |> summarise(
+  Murder = mean(Murder),
+  Assault = mean(Assault), 
+  Rape=mean(Rape))
+```
+```{r}
+subdata$divisivo = divisivo$cluster
+subdata$divisivo = as.factor(subdata$divisivo)
+levels(subdata$divisivo) = c("Alta delincuencia", "Baja delincuencia")
+table(subdata$divisivo)
+```
+
+```{r}
+fviz_cluster(object = list(data=subdata[,1:3], cluster = subdata$divisivo),
+             geom = c("text"), 
+             ellipse.type = "convex")
+```
+
+```{r}
+with(subdata,plot3d(subdata[,1:3], type = "s", size=0.8, col=as.numeric(divisivo)))
+with(subdata,text3d(subdata[,1:3], texts=rownames(subdata), pos=4))
+```
+
+
+
+############################################################################
+############################################################################
+
+Ejemplo 2:
+
+Utilice la base de datos "iris".
+
+Cuál es el método más adecuado?
+
+```{r}
+data_iris<-iris
+```
+
+
+
